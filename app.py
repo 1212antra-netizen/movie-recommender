@@ -11,6 +11,7 @@ import json
 import os
 import re
 import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -24,11 +25,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Configuration
 # ---------------------------------------------------------------------------
 
+APP_DIR = Path(__file__).resolve().parent
 MIN_DATASET_SIZE = 10_000          # Target size when manually expanding
-CACHE_ACCEPT_SIZE = 8_000          # Use cached CSV immediately at or above this count
-DATA_CACHE = "expanded_movies.csv"
-LOCAL_MOVIES = "movies.csv"
-LOCAL_CREDITS = "movies2.csv"
+DATA_CACHE = APP_DIR / "expanded_movies.csv"
+LOCAL_MOVIES = APP_DIR / "movies.csv"
+LOCAL_CREDITS = APP_DIR / "movies2.csv"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 NUM_RECOMMENDATIONS = 5
 
@@ -218,8 +219,11 @@ def hybrid_score(similarity: float, popularity: float, rating: float) -> float:
 
 def _load_local_base() -> pd.DataFrame:
     """Load and merge local movies.csv (+ movies2.csv credits when needed)."""
-    if not os.path.exists(LOCAL_MOVIES):
-        raise FileNotFoundError(f"Missing required file: {LOCAL_MOVIES}")
+    if not LOCAL_MOVIES.exists():
+        raise FileNotFoundError(
+            f"Missing dataset. Commit `{DATA_CACHE.name}` to your repo for deployment, "
+            f"or place `{LOCAL_MOVIES.name}` locally for development."
+        )
 
     movies = pd.read_csv(LOCAL_MOVIES, on_bad_lines="skip")
     required = {"movie_id", "title", "overview", "genres", "keywords", "cast", "crew", "vote_average", "popularity"}
@@ -228,8 +232,8 @@ def _load_local_base() -> pd.DataFrame:
         base = movies[list(required)].copy()
         base["movie_id"] = pd.to_numeric(base["movie_id"], errors="coerce")
     else:
-        if not os.path.exists(LOCAL_CREDITS):
-            raise FileNotFoundError(f"Missing credits file: {LOCAL_CREDITS}")
+        if not LOCAL_CREDITS.exists():
+            raise FileNotFoundError(f"Missing credits file: {LOCAL_CREDITS.name}")
         credits = pd.read_csv(LOCAL_CREDITS, on_bad_lines="skip")
         movies["id"] = pd.to_numeric(movies["id"], errors="coerce")
         movies = movies.dropna(subset=["id"]).astype({"id": int})
@@ -627,18 +631,17 @@ def _cached_to_raw(cached: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data(show_spinner="Loading movie database…")
 def load_data() -> pd.DataFrame:
     """
-    Load processed dataset from cache for fast startup.
-    TMDB expansion is not run automatically — use expand_dataset.py offline.
+    Load processed dataset from bundled cache (deployment) or local CSVs (dev).
     """
-    if os.path.exists(DATA_CACHE):
+    if DATA_CACHE.exists():
         try:
             cached = pd.read_csv(DATA_CACHE)
-            if len(cached) >= CACHE_ACCEPT_SIZE:
+            if len(cached) > 0:
                 return _deserialize_cached(cached)
-        except Exception:
-            pass
+        except Exception as exc:
+            raise FileNotFoundError(f"Could not read {DATA_CACHE.name}: {exc}") from exc
 
-    # First-time setup only: build from local CSVs (no blocking TMDB fetch)
+    # Local development fallback only (not available on Streamlit Cloud)
     raw_base = _load_local_base()
     processed = preprocess(raw_base)
     processed.to_csv(DATA_CACHE, index=False)
@@ -698,7 +701,10 @@ def main() -> None:
         _, similarity_matrix = build_similarity(df)
     except FileNotFoundError as exc:
         st.error(f"Dataset error: {exc}")
-        st.info("Place `movies.csv` (and `movies2.csv` for credits) in the project folder.")
+        st.info(
+            "For Streamlit Cloud: commit `expanded_movies.csv` to your GitHub repo and redeploy. "
+            "For local dev: place `movies.csv` and `movies2.csv` in the project folder."
+        )
         return
     except Exception as exc:
         st.error(f"Failed to initialize: {exc}")

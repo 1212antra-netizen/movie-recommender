@@ -1,4 +1,5 @@
 *.csv
+!expanded_movies.csv
 *.pkl
 __pycache__/
 .streamlit/
