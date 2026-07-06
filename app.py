@@ -28,6 +28,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 APP_DIR = Path(__file__).resolve().parent
 MIN_DATASET_SIZE = 10_000          # Target size when manually expanding
 DATA_CACHE = APP_DIR / "expanded_movies.csv"
+RAW_DATA_CACHE = APP_DIR / "expanded_movies_raw.csv"
 LOCAL_MOVIES = APP_DIR / "movies.csv"
 LOCAL_CREDITS = APP_DIR / "movies2.csv"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
@@ -631,33 +632,68 @@ def _cached_to_raw(cached: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data(show_spinner="Loading movie database…")
 def load_data() -> pd.DataFrame:
     """
-    Load processed dataset from bundled cache (deployment) or local CSVs (dev).
+    Load processed dataset from bundled cache (deployment) or rebuild from raw/local data.
     """
     if DATA_CACHE.exists():
         try:
             cached = pd.read_csv(DATA_CACHE)
             if len(cached) > 0:
-                return _deserialize_cached(cached)
-        except Exception as exc:
-            raise FileNotFoundError(f"Could not read {DATA_CACHE.name}: {exc}") from exc
+                df = _deserialize_cached(cached)
+                if _cache_has_genres(df):
+                    return df
+        except Exception:
+            pass
 
-    # Local development fallback only (not available on Streamlit Cloud)
-    raw_base = _load_local_base()
-    processed = preprocess(raw_base)
-    processed.to_csv(DATA_CACHE, index=False)
+    if RAW_DATA_CACHE.exists():
+        raw = pd.read_csv(RAW_DATA_CACHE)
+    else:
+        raw = _load_local_base()
+
+    processed = preprocess(raw)
+    _serialize_for_cache(processed).to_csv(DATA_CACHE, index=False)
     return processed
+
+
+def _parse_list_column(value: Any) -> list:
+    """Parse list columns from CSV (JSON or Python repr)."""
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, str) or not value.strip() or value.strip() == "[]":
+        return []
+    text = value.strip()
+    try:
+        parsed = json.loads(text)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        pass
+    try:
+        parsed = ast.literal_eval(text)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
+
+
+def _serialize_for_cache(df: pd.DataFrame) -> pd.DataFrame:
+    """Serialize list columns as JSON before writing CSV."""
+    out = df.copy()
+    for col in ("genres", "keywords", "cast", "crew"):
+        if col in out.columns:
+            out[col] = out[col].apply(lambda x: json.dumps(x) if isinstance(x, list) else x)
+    return out
 
 
 def _deserialize_cached(cached: pd.DataFrame) -> pd.DataFrame:
     df = cached.copy()
     for col in ("genres", "keywords", "cast", "crew"):
         if col in df.columns:
-            df[col] = df[col].apply(
-                lambda x: json.loads(x) if isinstance(x, str) and x.startswith("[") else (x if isinstance(x, list) else [])
-            )
+            df[col] = df[col].apply(_parse_list_column)
     if "title_lower" not in df.columns:
         df["title_lower"] = df["title"].str.lower()
     return df
+
+
+def _cache_has_genres(df: pd.DataFrame) -> bool:
+    return bool(df["genres"].apply(lambda g: isinstance(g, list) and len(g) > 0).any())
 
 
 # ---------------------------------------------------------------------------
