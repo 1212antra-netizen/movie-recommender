@@ -1,5 +1,8 @@
 import pandas as pd
 import ast
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 movies = pd.read_csv("movies.csv", on_bad_lines='skip')
 credits = pd.read_csv("movies2.csv", on_bad_lines='skip')
@@ -81,5 +84,5 @@ def recommend(movie):
         print(new_df.iloc[i[0]].title)
 
 print("Movie Recommender Ready")
-api_key = "a31987ac585ca6710a1b400d8781e595"
+api_key = os.getenv("TMDB_API_KEY")
 
