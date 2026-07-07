@@ -52,75 +52,9 @@ TITLE_STOP_WORDS = frozenset(
 )
 
 # ---------------------------------------------------------------------------
-# Page config & styling
+# Utilities
+# (Page config & styling moved inside main() to avoid ScriptRunContext warning)
 # ---------------------------------------------------------------------------
-
-st.set_page_config(
-    page_title="Movie Recommender Pro",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
-html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
-.stApp { background-color: #111111; color: #FFFFFF; }
-.header-container {
-    text-align: center; padding: 28px 0 18px;
-    background: linear-gradient(180deg, rgba(229,9,20,0.15) 0%, rgba(17,17,17,0) 100%);
-    border-radius: 12px; margin-bottom: 20px;
-}
-.app-title { color: #E50914; font-size: 2.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
-.app-subtitle { color: #aaaaaa; font-size: 1.05rem; font-weight: 300; margin-top: 6px; }
-.stSlider label, .stSelectbox label, .stMultiSelect label, .stRadio label {
-    color: #E50914 !important; font-weight: 600 !important;
-}
-div.stButton > button:first-child {
-    background-color: #E50914 !important; color: white !important;
-    font-size: 1.05rem !important; font-weight: 700 !important;
-    border-radius: 8px !important; border: none !important;
-    padding: 12px 24px !important; width: 100% !important;
-    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.35) !important;
-}
-div.stButton > button:first-child:hover {
-    background-color: #ff1f2f !important; transform: translateY(-2px);
-}
-.movie-card {
-    background: #181818; border-radius: 10px; overflow: hidden;
-    border: 1px solid #2a2a2a; text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.movie-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 28px rgba(229,9,20,0.35); border-color: #E50914;
-}
-.movie-poster {
-    width: 100%; aspect-ratio: 2/3; object-fit: cover;
-    display: block; border-bottom: 3px solid #E50914; background: #222;
-}
-.movie-info { padding: 10px 8px; }
-.movie-title {
-    color: #fff; font-size: 0.92rem; font-weight: 700;
-    min-height: 44px; line-height: 1.25;
-    display: flex; align-items: center; justify-content: center;
-}
-.movie-meta {
-    display: flex; justify-content: space-between; font-size: 0.78rem;
-    color: #8c8c8c; margin-top: 4px;
-}
-.movie-rating { color: #ffb400; font-weight: 600; }
-.category-header {
-    border-left: 5px solid #E50914; padding-left: 12px;
-    margin: 28px 0 16px; font-weight: 700; font-size: 1.4rem;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +657,73 @@ def render_movie_card(movie: dict) -> None:
 
 
 def main() -> None:
+    # Must be the very first Streamlit call
+    st.set_page_config(
+        page_title="Movie Recommender Pro",
+        page_icon="🎬",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+
+    st.markdown(
+        """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
+.stApp { background-color: #111111; color: #FFFFFF; }
+.header-container {
+    text-align: center; padding: 28px 0 18px;
+    background: linear-gradient(180deg, rgba(229,9,20,0.15) 0%, rgba(17,17,17,0) 100%);
+    border-radius: 12px; margin-bottom: 20px;
+}
+.app-title { color: #E50914; font-size: 2.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
+.app-subtitle { color: #aaaaaa; font-size: 1.05rem; font-weight: 300; margin-top: 6px; }
+.stSlider label, .stSelectbox label, .stMultiSelect label, .stRadio label {
+    color: #E50914 !important; font-weight: 600 !important;
+}
+div.stButton > button:first-child {
+    background-color: #E50914 !important; color: white !important;
+    font-size: 1.05rem !important; font-weight: 700 !important;
+    border-radius: 8px !important; border: none !important;
+    padding: 12px 24px !important; width: 100% !important;
+    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.35) !important;
+}
+div.stButton > button:first-child:hover {
+    background-color: #ff1f2f !important; transform: translateY(-2px);
+}
+.movie-card {
+    background: #181818; border-radius: 10px; overflow: hidden;
+    border: 1px solid #2a2a2a; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.movie-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 28px rgba(229,9,20,0.35); border-color: #E50914;
+}
+.movie-poster {
+    width: 100%; aspect-ratio: 2/3; object-fit: cover;
+    display: block; border-bottom: 3px solid #E50914; background: #222;
+}
+.movie-info { padding: 10px 8px; }
+.movie-title {
+    color: #fff; font-size: 0.92rem; font-weight: 700;
+    min-height: 44px; line-height: 1.25;
+    display: flex; align-items: center; justify-content: center;
+}
+.movie-meta {
+    display: flex; justify-content: space-between; font-size: 0.78rem;
+    color: #8c8c8c; margin-top: 4px;
+}
+.movie-rating { color: #ffb400; font-weight: 600; }
+.category-header {
+    border-left: 5px solid #E50914; padding-left: 12px;
+    margin: 28px 0 16px; font-weight: 700; font-size: 1.4rem;
+}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
     st.markdown(
         """
         <div class="header-container">
