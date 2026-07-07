@@ -49,7 +49,7 @@ def get_api_key():
         pass
     
     if not api_key:
-        api_key = os.environ.get("TMDB_API_KEY", "a31987ac585ca6710a1b400d8781e595")
+        api_key = os.getenv("TMDB_API_KEY")
     
     return api_key
 
